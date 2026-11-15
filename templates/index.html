@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Screener Dashboard</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: Arial, sans-serif;
+            color: #172033;
+            background: #f3f6fb;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 36px 20px; }
+        main { max-width: 1180px; margin: 0 auto; }
+        .page-header { margin-bottom: 28px; }
+        h1 { margin: 0 0 8px; font-size: 30px; }
+        .subtitle { margin: 0; color: #657187; }
+        .market-panel {
+            margin-top: 24px;
+            overflow: hidden;
+            border: 1px solid #e1e7f0;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 5px 18px rgba(27, 43, 69, 0.06);
+        }
+        .panel-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 20px 22px;
+            border-bottom: 1px solid #e8edf4;
+        }
+        .panel-actions { display: flex; align-items: center; gap: 14px; }
+        .mode-form select {
+            padding: 8px 10px;
+            border: 1px solid #cbd4e1;
+            border-radius: 6px;
+            background: #fff;
+            color: #172033;
+        }
+        h2 { margin: 0; font-size: 20px; }
+        .count { color: #657187; font-size: 14px; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 14px 18px; border-bottom: 1px solid #edf0f5; }
+        th {
+            background: #f8faff;
+            color: #5b667a;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        td { font-size: 14px; white-space: nowrap; }
+        tbody tr:last-child td { border-bottom: 0; }
+        .ticker { font-weight: 700; color: #1d3764; }
+        .ticker-button {
+            padding: 0;
+            border: 0;
+            background: none;
+            color: inherit;
+            font: inherit;
+            font-weight: inherit;
+            cursor: pointer;
+            text-decoration: underline;
+            text-decoration-color: transparent;
+            text-underline-offset: 3px;
+        }
+        .ticker-button:hover, .ticker-button:focus-visible { text-decoration-color: currentColor; }
+        .chart-dialog {
+            width: min(1100px, calc(100vw - 32px));
+            max-width: none;
+            height: min(760px, calc(100vh - 32px));
+            max-height: none;
+            padding: 0;
+            overflow: hidden;
+            border: 0;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 18px 60px rgba(0, 0, 0, 0.3);
+        }
+        .chart-dialog::backdrop { background: rgba(15, 23, 42, 0.62); }
+        .chart-dialog-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            min-height: 58px;
+            padding: 10px 16px;
+            border-bottom: 1px solid #e8edf4;
+        }
+        .chart-dialog-header h2 { font-size: 18px; }
+        .chart-close {
+            width: 36px;
+            height: 36px;
+            border: 0;
+            border-radius: 50%;
+            background: #edf0f5;
+            color: #172033;
+            cursor: pointer;
+            font-size: 23px;
+            line-height: 1;
+        }
+        .chart-frame { height: calc(100% - 58px); }
+        .chart-loading { padding: 20px; color: #657187; }
+        .chart-loading[role="alert"] { color: #a42828; }
+        .tradingview-widget-container { display: flex; width: 100%; height: 100%; flex-direction: column; }
+        .tradingview-widget-container__widget { width: 100%; min-height: 0; flex: 1; }
+        .tradingview-widget-copyright { padding: 6px; color: #657187; font-size: 12px; text-align: center; }
+        .tradingview-widget-copyright a { color: #2857a4; }
+        .badge {
+            display: inline-block;
+            padding: 6px 9px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .strong-buy { background: #e2f6e9; color: #18743a; }
+        .weak-buy { background: #e2f3fb; color: #14658b; }
+        .strong-sell { background: #8b0000; color: #fff; }
+        .weak-sell { background: #ff8c00; color: #fff; }
+        .neutral { background: #fff3d4; color: #805a00; }
+        .do-not-buy { background: #fde8e8; color: #a42828; }
+        .pending { background: #edf0f5; color: #596579; }
+        .empty { padding: 28px 18px; color: #778196; text-align: center; }
+        .add-stock { position: relative; }
+        .add-stock summary { list-style: none; }
+        .add-stock summary::-webkit-details-marker { display: none; }
+        .add-button, .remove-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border: 0;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 23px;
+            line-height: 1;
+        }
+        .add-button { background: #e8efff; color: #2857a4; }
+        .remove-button { width: 30px; height: 30px; background: #fde8e8; color: #a42828; }
+        .add-form {
+            position: absolute;
+            z-index: 1;
+            top: calc(100% + 10px);
+            right: 0;
+            display: flex;
+            gap: 8px;
+            min-width: 290px;
+            padding: 12px;
+            border: 1px solid #e1e7f0;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 5px 18px rgba(27, 43, 69, 0.12);
+        }
+        .add-form input {
+            min-width: 0;
+            flex: 1;
+            padding: 9px;
+            border: 1px solid #cbd4e1;
+            border-radius: 5px;
+        }
+        .add-form button {
+            padding: 9px 12px;
+            border: 0;
+            border-radius: 5px;
+            background: #2857a4;
+            color: #fff;
+            cursor: pointer;
+        }
+        .notice { margin: 0 0 16px; padding: 12px 14px; border-radius: 7px; }
+        .notice-success { background: #e2f6e9; color: #18743a; }
+        .notice-info { background: #e8efff; color: #2857a4; }
+        .notice-warning { background: #fff3d4; color: #805a00; }
+        .notice-error { background: #fde8e8; color: #a42828; }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        @media (max-width: 600px) {
+            body { padding: 24px 12px; }
+            h1 { font-size: 25px; }
+            .panel-heading { padding: 16px; }
+            th, td { padding: 12px; }
+            .count { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <header class="page-header">
+            <h1>Stock Screener</h1>
+            <p class="subtitle">
+                Latest recommendations for NASDAQ and NIFTY.
+                Investor uses weekly signals with a 2× weekly ATR stop; Trader combines daily trend with 4-hour signals and a 1.5× 4-hour ATR stop.
+            </p>
+        </header>
+
+        {% if notice %}
+        <div class="notice {% if notice == 'scanned' or notice == 'removed' %}notice-success{% elif notice == 'exists' %}notice-info{% elif notice == 'mode_awaiting' %}notice-warning{% else %}notice-error{% endif %}" role="status">
+            {% if notice == 'scanned' %}
+                {{ notice_ticker }} {{ notice_mode }} scan completed successfully.
+            {% elif notice == 'mode_awaiting' %}
+                {{ notice_ticker }} has no {{ notice_mode }} result yet and remains Awaiting scan for that mode.
+            {% elif notice == 'exists' %}
+                {{ notice_ticker }} is already in this market's watchlist.
+            {% elif notice == 'removed' %}
+                {{ notice_ticker }} removed from the watchlist. Its history is preserved.
+            {% elif notice == 'not_found' %}
+                {{ notice_ticker }} is not in this market's active watchlist.
+            {% elif notice == 'invalid' %}
+                Enter a valid ticker symbol using letters, numbers, periods, or Yahoo Finance ticker characters.
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <section class="market-panel" aria-labelledby="nasdaq-heading">
+            <div class="panel-heading">
+                <h2 id="nasdaq-heading">NASDAQ</h2>
+                <div class="panel-actions">
+                    <span class="count">Top {{ nasdaq_recs|length }} of 10</span>
+                    <form class="mode-form" method="get" action="{{ url_for('index') }}">
+                        <input type="hidden" name="nifty_mode" value="{{ nifty_mode }}">
+                        <label class="sr-only" for="nasdaq-mode">NASDAQ analysis mode</label>
+                        <select id="nasdaq-mode" name="nasdaq_mode" onchange="this.form.submit()">
+                            <option value="Investor" {% if nasdaq_mode == 'Investor' %}selected{% endif %}>Investor</option>
+                            <option value="Trader" {% if nasdaq_mode == 'Trader' %}selected{% endif %}>Trader</option>
+                        </select>
+                    </form>
+                    <details class="add-stock">
+                        <summary class="add-button" title="Add NASDAQ stock" aria-label="Add NASDAQ stock"><span aria-hidden="true">+</span></summary>
+                        <form class="add-form" method="post" action="{{ url_for('add_stock_route', market='NASDAQ') }}">
+                            <input type="hidden" name="mode" value="{{ nasdaq_mode }}">
+                            <input type="hidden" name="nasdaq_mode" value="{{ nasdaq_mode }}">
+                            <input type="hidden" name="nifty_mode" value="{{ nifty_mode }}">
+                            <label class="sr-only" for="nasdaq-ticker">NASDAQ ticker</label>
+                            <input id="nasdaq-ticker" name="ticker" type="text" placeholder="Ticker (e.g. MSFT)" maxlength="20" pattern="[A-Za-z0-9.^=_&-]{1,20}" required>
+                            <button type="submit">Add</button>
+                        </form>
+                    </details>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Ticker</th>
+                            <th>Score</th>
+                            <th>Recommendation</th>
+                            <th>ATR Stop Loss</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in nasdaq_recs %}
+                        <tr>
+                            <td>{% if row['timestamp'] %}{{ row['timestamp'] }}{% else %}Awaiting scan{% endif %}</td>
+                            <td class="ticker"><button class="ticker-button" type="button" data-market="NASDAQ" data-ticker="{{ row['ticker'] }}" aria-label="Show TradingView chart for {{ row['ticker'] }}">{{ row['ticker'] }}</button></td>
+                            <td>{% if row['score'] is not none %}{{ row['score'] }}{% else %}—{% endif %}</td>
+                            <td>
+                                {% if not row['recommendation'] %}
+                                    <span class="badge pending">{{ row['scan_status'] }}</span>
+                                {% elif row['recommendation'] == 'STRONG BUY' %}
+                                    <span class="badge strong-buy">{{ row['recommendation'] }}</span>
+                                {% elif row['recommendation'] == 'WEAK BUY / HOLD' %}
+                                    <span class="badge weak-buy">{{ row['recommendation'] }}</span>
+                                {% elif row['recommendation'] == 'STRONG SELL / SHORT' %}
+                                    <span class="badge strong-sell">{{ row['recommendation'] }}</span>
+                                {% elif row['recommendation'] == 'WEAK SELL / WATCH' %}
+                                    <span class="badge weak-sell">{{ row['recommendation'] }}</span>
+                                {% elif row['recommendation'] == 'NEUTRAL / CASH' %}
+                                    <span class="badge neutral">{{ row['recommendation'] }}</span>
+                                {% else %}
+                                    <span class="badge do-not-buy">{{ row['recommendation'] }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{% if row['stop_loss'] is not none %}{{ row['stop_loss'] }}{% else %}—{% endif %}</td>
+                            <td>
+                                <form method="post" action="{{ url_for('remove_stock_route', market='NASDAQ') }}">
+                                    <input type="hidden" name="ticker" value="{{ row['ticker'] }}">
+                                    <input type="hidden" name="nasdaq_mode" value="{{ nasdaq_mode }}">
+                                    <input type="hidden" name="nifty_mode" value="{{ nifty_mode }}">
+                                    <button class="remove-button" type="submit" title="Remove {{ row['ticker'] }}" aria-label="Remove {{ row['ticker'] }}">×</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td class="empty" colspan="6">No scored NASDAQ buy/sell recommendations yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="market-panel" aria-labelledby="nifty-heading">
+            <div class="panel-heading">
+                <h2 id="nifty-heading">NIFTY</h2>
+                <div class="panel-actions">
+                    <span class="count">Top {{ nifty_recs|length }} of 10</span>
+                    <form class="mode-form" method="get" action="{{ url_for('index') }}">
+                        <input type="hidden" name="nasdaq_mode" value="{{ nasdaq_mode }}">
+                        <label class="sr-only" for="nifty-mode">NIFTY analysis mode</label>
+                        <select id="nifty-mode" name="nifty_mode" onchange="this.form.submit()">
+                            <option value="Investor" {% if nifty_mode == 'Investor' %}selected{% endif %}>Investor</option>
+                            <option value="Trader" {% if nifty_mode == 'Trader' %}selected{% endif %}>Trader</option>
+                        </select>
+                    </form>
+                    <details class="add-stock">
+                        <summary class="add-button" title="Add NIFTY stock" aria-label="Add NIFTY stock"><span aria-hidden="true">+</span></summary>
+                        <form class="add-form" method="post" action="{{ url_for('add_stock_route', market='NIFTY') }}">
+                            <input type="hidden" name="mode" value="{{ nifty_mode }}">
+                            <input type="hidden" name="nasdaq_mode" value="{{ nasdaq_mode }}">
+                            <input type="hidden" name="nifty_mode" value="{{ nifty_mode }}">
+                            <label class="sr-only" for="nifty-ticker">NIFTY ticker</label>
+                            <input id="nifty-ticker" name="ticker" type="text" placeholder="Ticker (e.g. INFY.NS)" maxlength="20" pattern="[A-Za-z0-9.^=_&-]{1,20}" required>
+                            <button type="submit">Add</button>
+                        </form>
+                    </details>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Ticker</th>
+                            <th>Score</th>
+                            <th>Recommendation</th>
+                            <th>ATR Stop Loss</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in nifty_recs %}
+                        <tr>
+                            <td>{% if row['timestamp'] %}{{ row['timestamp'] }}{% else %}Awaiting scan{% endif %}</td>
+                            <td class="ticker"><button class="ticker-button" type="button" data-market="NIFTY" data-ticker="{{ row['ticker'] }}" aria-label="Show TradingView chart for {{ row['ticker'] }}">{{ row['ticker'] }}</button></td>
+                            <td>{% if row['score'] is not none %}{{ row['score'] }}{% else %}—{% endif %}</td>
+                            <td>
+                                {% if not row['recommendation'] %}
+                                    <span class="badge pending">{{ row['scan_status'] }}</span>
+                                {% elif row['recommendation'] == 'STRONG BUY' %}
+                                    <span class="badge strong-buy">{{ row['recommendation'] }}</span>
+                                {% elif row['recommendation'] == 'WEAK BUY / HOLD' %}
+                                    <span class="badge weak-buy">{{ row['recommendation'] }}</span>
+                                {% elif row['recommendation'] == 'STRONG SELL / SHORT' %}
+                                    <span class="badge strong-sell">{{ row['recommendation'] }}</span>
+                                {% elif row['recommendation'] == 'WEAK SELL / WATCH' %}
+                                    <span class="badge weak-sell">{{ row['recommendation'] }}</span>
+                                {% elif row['recommendation'] == 'NEUTRAL / CASH' %}
+                                    <span class="badge neutral">{{ row['recommendation'] }}</span>
+                                {% else %}
+                                    <span class="badge do-not-buy">{{ row['recommendation'] }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{% if row['stop_loss'] is not none %}{{ row['stop_loss'] }}{% else %}—{% endif %}</td>
+                            <td>
+                                <form method="post" action="{{ url_for('remove_stock_route', market='NIFTY') }}">
+                                    <input type="hidden" name="ticker" value="{{ row['ticker'] }}">
+                                    <input type="hidden" name="nasdaq_mode" value="{{ nasdaq_mode }}">
+                                    <input type="hidden" name="nifty_mode" value="{{ nifty_mode }}">
+                                    <button class="remove-button" type="submit" title="Remove {{ row['ticker'] }}" aria-label="Remove {{ row['ticker'] }}">×</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td class="empty" colspan="6">No NIFTY stocks in the table.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+    <dialog class="chart-dialog" aria-labelledby="chart-title">
+        <div class="chart-dialog-header">
+            <h2 id="chart-title">TradingView chart</h2>
+            <button class="chart-close" type="button" aria-label="Close chart">×</button>
+        </div>
+        <div class="chart-frame" id="chart-frame"></div>
+    </dialog>
+    <script>
+        const chartDialog = document.querySelector(".chart-dialog");
+        const chartFrame = document.getElementById("chart-frame");
+        const chartTitle = document.getElementById("chart-title");
+        let tradingViewScriptPromise;
+
+        function loadTradingViewScript() {
+            if (window.TradingView && typeof window.TradingView.widget === "function") {
+                return Promise.resolve();
+            }
+            if (!tradingViewScriptPromise) {
+                tradingViewScriptPromise = new Promise((resolve, reject) => {
+                    const script = document.createElement("script");
+                    script.src = "https://s3.tradingview.com/tv.js";
+                    script.async = true;
+                    script.onload = resolve;
+                    script.onerror = () => {
+                        tradingViewScriptPromise = null;
+                        reject(new Error("TradingView chart library failed to load."));
+                    };
+                    document.head.append(script);
+                });
+            }
+            return tradingViewScriptPromise;
+        }
+
+        document.querySelectorAll(".ticker-button").forEach((button) => {
+            button.addEventListener("click", async () => {
+                const ticker = button.dataset.ticker;
+                const market = button.dataset.market;
+                const chartSymbol = market === "NIFTY"
+                    ? `NSE:${ticker.replace(/\.NS$/i, "")}`
+                    : `NASDAQ:${ticker}`;
+                chartTitle.textContent = `${ticker} — TradingView`;
+                chartFrame.replaceChildren();
+
+                const container = document.createElement("div");
+                container.className = "tradingview-widget-container";
+                const widget = document.createElement("div");
+                widget.className = "tradingview-widget-container__widget";
+                widget.id = "tradingview-chart";
+                const loading = document.createElement("p");
+                loading.className = "chart-loading";
+                loading.textContent = "Loading TradingView chart…";
+                widget.append(loading);
+                container.append(widget);
+                const attribution = document.createElement("div");
+                attribution.className = "tradingview-widget-copyright";
+                const attributionLink = document.createElement("a");
+                attributionLink.href = "https://www.tradingview.com/";
+                attributionLink.target = "_blank";
+                attributionLink.rel = "noopener noreferrer";
+                attributionLink.textContent = "Charts by TradingView";
+                attribution.append(attributionLink);
+                container.append(attribution);
+                chartFrame.append(container);
+                chartDialog.showModal();
+
+                try {
+                    await loadTradingViewScript();
+                    if (!chartDialog.open || !widget.isConnected) return;
+                    loading.remove();
+                    new window.TradingView.widget({
+                        container_id: widget.id,
+                        autosize: true,
+                        symbol: chartSymbol,
+                        interval: "D",
+                        timezone: market === "NIFTY" ? "Asia/Kolkata" : "America/New_York",
+                        theme: "light",
+                        style: "1",
+                        locale: "en",
+                        allow_symbol_change: false,
+                        withdateranges: true,
+                        hide_side_toolbar: false,
+                        save_image: false,
+                        studies: [
+                            { id: "MAExp@tv-basicstudies", inputs: { length: 13 } },
+                            { id: "MAExp@tv-basicstudies", inputs: { length: 62 } },
+                            { id: "MAExp@tv-basicstudies", inputs: { length: 200 } }
+                        ]
+                    });
+                } catch (error) {
+                    console.error("Unable to load TradingView chart.", error);
+                    if (chartDialog.open && widget.isConnected) {
+                        widget.replaceChildren(loading);
+                        loading.textContent = "Unable to load the TradingView chart. Check your connection and try again.";
+                        loading.setAttribute("role", "alert");
+                    }
+                }
+            });
+        });
+
+        document.querySelector(".chart-close").addEventListener("click", () => chartDialog.close());
+        chartDialog.addEventListener("click", (event) => {
+            if (event.target === chartDialog) chartDialog.close();
+        });
+        chartDialog.addEventListener("close", () => chartFrame.replaceChildren());
+    </script>
+</body>
+</html>
